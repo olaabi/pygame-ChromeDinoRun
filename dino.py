@@ -34,6 +34,13 @@ bigCacti = [pygame.image.load('C:\\Users\\Owner\\Documents\\GitHub\\Python Proje
          pygame.image.load('C:\\Users\\Owner\\Documents\\GitHub\\Python Projects\\pygame-ChromeDinoRun\\Assets\\Cactus\\LargeCactus2.png'),
          pygame.image.load('C:\\Users\\Owner\\Documents\\GitHub\\Python Projects\\pygame-ChromeDinoRun\\Assets\\Cactus\\LargeCactus3.png')]
 
+birds = [pygame.image.load('C:\\Users\\Owner\\Documents\\GitHub\\Python Projects\\pygame-ChromeDinoRun\\Assets\\Bird\\Bird1.png'),
+        pygame.image.load('C:\\Users\\Owner\\Documents\\GitHub\\Python Projects\\pygame-ChromeDinoRun\\Assets\\Bird\\Bird2.png')]
+         
+birds[0] = pygame.transform.scale(birds[0], (birds[0].get_width() - 20, birds[0].get_height() - 20))
+birds[1] = pygame.transform.scale(birds[1], (birds[1].get_width() - 20, birds[1].get_height() - 20))
+
+
 # used for fps
 clock = pygame.time.Clock()
 
@@ -46,7 +53,7 @@ class Dino:
     runState = True
     duckState = False
 
-    dinoJumpVel = 10
+    dinoJumpVel = 9
     dinoY = 300
 
     dino_rect = playerRun[0].get_rect(topleft = (80, 300))
@@ -75,14 +82,15 @@ class Dino:
         self.dino_rect = playerDuck[self.duckIndex].get_rect(topleft = (80, 340))
     
     def jump(self):
+        game_screen.blit(playerJump, (80, self.dinoY))
+
         if self.jumpState:
-            game_screen.blit(playerJump, (80, self.dinoY))
             self.dinoY -= self.dinoJumpVel * 4
             self.dinoJumpVel -= 0.8
-        
-        if self.dinoJumpVel < -10:
+
+        if self.dinoJumpVel < -9:
             self.jumpState = False
-            self.dinoJumpVel = 10
+            self.dinoJumpVel = 9
             self.dinoY = 300
         
         self.dino_rect = playerJump.get_rect(topleft = (80, self.dinoY))
@@ -134,7 +142,7 @@ class Ground:
         game_screen.blit(ground, (self.x1, 360))
         game_screen.blit(ground, (self.x2, 360))
 
-class Obstacle():
+class Cacti():
     small_rect = None
     big_rect = None 
 
@@ -151,6 +159,10 @@ class Obstacle():
         self.small_rect = self.image1.get_rect(topleft = (self.x1, self.y1))
         self.big_rect = self.image2.get_rect(topleft = (self.x2, self.y2))
 
+        # update rectangles to make hitbox smaller during collision
+        self.small_rect = self.small_rect.inflate(-20, -15)
+        self.big_rect = self.big_rect.inflate(-10, -85)
+
         self.x1 -= groundSpeed
         self.x2 -= groundSpeed
 
@@ -159,20 +171,53 @@ class Obstacle():
 
         if self.x1 < -self.image1.get_width():
             self.image1 = random.choice(smallCacti)
-            self.x1 = 600 + random.randint(400, 700)
+            self.x1 = 600 + random.randint(500, 800)
 
         if self.x2 < -self.image2.get_width():
             self.image2 = random.choice(bigCacti)
             self.x2 = 600 + random.randint(800, 1000)
 
+class Bird():
+    bird_rect = None
+    flyIndex = 0
+    pause = 0
 
+    def __init__(self):
+        # initialize starting position of the newest bird on screen
+        self.x = 1200
+        self.y = random.randint(50, 100)
+    
+    def fly(self):
+        self.pause = 0
+        self.bird_rect = birds[self.flyIndex].get_rect(topleft = (self.x, self.y))
+
+        # readjust hitbox
+        self.bird_rect = self.bird_rect.inflate(-100, -100)
+
+        game_screen.blit(birds[self.flyIndex], (self.x, self.y))
+        self.x -= 20 # speed bird goes across the screen
+        
+        # flying animation (switch index continuously while blitting ^)
+        self.flyIndex += 1
+        if (self.flyIndex >= len(birds)):
+            self.flyIndex = 0
+
+        self.bird_rect = birds[self.flyIndex].get_rect(topleft = (self.x, self.y))
+
+        # reset position when crosses left side of screen
+        if self.x < -birds[self.flyIndex].get_width():
+            self.x = 1200
+            self.y = random.randint(50, 300)
+
+        
 new_dino = Dino()
 new_ground = Ground()
 new_cloud = Cloud()
-new_obstacles = Obstacle()
+new_cacti = Cacti()
+new_birds = Bird()
 
 while True:
-    pygame.time.delay(100)
+    pygame.time.delay(50)
     # continually check if quit is called
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -188,10 +233,11 @@ while True:
     new_cloud.cloudDraw()
 
     # draws obstacles on screen
-    new_obstacles.obstacleDraw()
+    new_cacti.obstacleDraw()
+    new_birds.fly()
 
     # check continuously for collision between dinosaur and obstacle
-    if new_dino.dino_rect.colliderect(new_obstacles.small_rect) or new_dino.dino_rect.colliderect(new_obstacles.big_rect):
+    if new_dino.dino_rect.colliderect(new_cacti.small_rect) or new_dino.dino_rect.colliderect(new_cacti.big_rect) or new_dino.dino_rect.colliderect(new_birds.bird_rect):
         break
 
     keys = pygame.key.get_pressed() # obtains keys that are currently being pressed
